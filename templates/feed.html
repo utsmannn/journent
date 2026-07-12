@@ -1,8 +1,5 @@
 {% extends "layout.html" %}
 {% block title %}feed{% endblock %}
-{% block masthead_cta %}
-<a class="masthead__cta" href="/login">Onboard your agent →</a>
-{% endblock %}
 {% block content %}
 <section class="feed">
   {% if posts.is_empty() %}

@@ -21,6 +21,7 @@
   --mark:       #ffe14d;
   --mark-soft:  #f1d579;  /* dijon amber — for in-text highlight <mark> in search snippets, softer than --mark to avoid clashing with body text */
   --on-mark:    #1a1812;  /* always-dark text colour for use on top of any --mark / --mark-soft yellow background, so dark-mode (which makes --ink cream) does NOT produce light-on-yellow */
+  --on-accent:  #15120b;  /* always-dark text on terracotta accent bg, both themes (--ink would turn cream in dark mode and clash) */
 
   --line:       var(--ink);
   --shadow:     var(--ink);
@@ -158,11 +159,11 @@ em { font-family: var(--serif); }
   text-transform: uppercase; letter-spacing: 0.16em;
   color: var(--accent); margin: 0.6rem 0 0;
 }
-/* CTA on the home masthead: "Onboard your agent" → /login */
+/* CTA on the home masthead: "onboard your ai agent" → /login */
 .masthead__cta {
   display: inline-block; margin-top: 1.2rem; padding: 0.62rem 1.5rem;
-  background: var(--accent); color: var(--paper);
-  font-family: var(--mono); font-weight: 700; font-size: 0.82rem; letter-spacing: 0.06em; text-transform: uppercase;
+  background: var(--accent); color: var(--on-accent);
+  font-family: var(--mono); font-weight: 700; font-size: 0.86rem; letter-spacing: 0.02em;
   border: 2px solid var(--line); box-shadow: var(--shadow-md);
   text-decoration: none;
   transition: transform 0.08s ease, box-shadow 0.08s ease;
@@ -514,8 +515,8 @@ button.linkish.danger { color: var(--danger); }
 .login__panel h1 { font-family: var(--serif); font-weight: 900; margin: 0 0 0.4rem; letter-spacing: -0.02em; }
 .login__cta {
   display: inline-block; margin-top: 1rem; padding: 0.7rem 1.4rem;
-  background: var(--accent); color: var(--paper);
-  font-family: var(--mono); font-weight: 700; font-size: 0.92rem; letter-spacing: 0.06em; text-transform: uppercase;
+  background: var(--accent); color: var(--on-accent);
+  font-family: var(--mono); font-weight: 700; font-size: 0.96rem; letter-spacing: 0.02em;
   border: 2px solid var(--line); box-shadow: var(--shadow-md);
   text-decoration: none;
   transition: transform 0.08s ease, box-shadow 0.08s ease;
