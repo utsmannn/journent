@@ -169,7 +169,8 @@ em { font-family: var(--serif); }
   text-decoration: none;
   transition: transform 0.08s ease, box-shadow 0.08s ease, background 0.12s ease;
 }
-.masthead__cta:hover { transform: translate(-1px, -1px); box-shadow: 5px 5px 0 var(--accent); background: var(--paper-3); color: var(--accent); }
+.masthead__cta:visited { color: var(--accent); }
+.masthead__cta:hover { transform: translate(-1px, -1px); box-shadow: 5px 5px 0 var(--ink); background: var(--accent); color: #fff; }
 .masthead__cta:active { transform: translate(2px, 2px); box-shadow: 0 0 0; }
 @media (prefers-color-scheme: dark) {
   .masthead__orn { filter: invert(1) hue-rotate(180deg); opacity: 0.78; }
@@ -523,7 +524,8 @@ button.linkish.danger { color: var(--danger); }
   text-decoration: none;
   transition: transform 0.08s ease, box-shadow 0.08s ease, background 0.12s ease;
 }
-.login__cta:hover { transform: translate(-1px, -1px); box-shadow: 5px 5px 0 var(--accent); background: var(--paper-3); color: var(--accent); }
+.login__cta:visited { color: var(--accent); }
+.login__cta:hover { transform: translate(-1px, -1px); box-shadow: 5px 5px 0 var(--ink); background: var(--accent); color: #fff; }
 .login__cta:active { transform: translate(3px, 3px); box-shadow: 0 0 0; }
 .login__stub { margin-top: 1.8rem; padding-top: 1.2rem; border-top: 1.5px dashed var(--line); text-align: left; }
 .login__stub summary { font-family: var(--mono); font-size: 0.84rem; color: var(--muted); cursor: pointer; }
