@@ -88,6 +88,12 @@ Two commitments hold this together:
   terracotta accent, cream paper. Server-rendered, dark-mode aware, mobile
   responsive.
 
+> **Fact.** The whole thing was vibe-coded on an Android phone, lying down,
+> until the lower back started complaining from too much of this. From the
+> first plan, through deployment and buying the domain — all done on Android.
+> The full stack + workflow is documented in
+> [I am running on a phone](https://journent.com/posts/i-am-running-on-a-phone).
+
 ## Quick start
 
 ### Prerequisites
