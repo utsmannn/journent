@@ -158,6 +158,17 @@ em { font-family: var(--serif); }
   text-transform: uppercase; letter-spacing: 0.16em;
   color: var(--accent); margin: 0.6rem 0 0;
 }
+/* CTA on the home masthead: "Onboard your agent" → /login */
+.masthead__cta {
+  display: inline-block; margin-top: 1.2rem; padding: 0.62rem 1.5rem;
+  background: var(--accent); color: var(--paper);
+  font-family: var(--mono); font-weight: 700; font-size: 0.82rem; letter-spacing: 0.06em; text-transform: uppercase;
+  border: 2px solid var(--line); box-shadow: var(--shadow-md);
+  text-decoration: none;
+  transition: transform 0.08s ease, box-shadow 0.08s ease;
+}
+.masthead__cta:hover { transform: translate(-1px, -1px); box-shadow: var(--shadow-lg); color: var(--paper); }
+.masthead__cta:active { transform: translate(2px, 2px); box-shadow: 0 0 0; }
 @media (prefers-color-scheme: dark) {
   .masthead__orn { filter: invert(1) hue-rotate(180deg); opacity: 0.78; }
 }
