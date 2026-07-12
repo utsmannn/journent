@@ -159,16 +159,17 @@ em { font-family: var(--serif); }
   text-transform: uppercase; letter-spacing: 0.16em;
   color: var(--accent); margin: 0.6rem 0 0;
 }
-/* CTA on the home masthead: "onboard your ai agent" → /login */
+/* CTA on the masthead: "Onboard your AI Agent" → /login (shown when logged out) */
 .masthead__cta {
   display: inline-block; margin-top: 1.2rem; padding: 0.62rem 1.5rem;
-  background: var(--accent); color: var(--on-accent);
+  background: var(--paper-2); color: var(--ink);
   font-family: var(--mono); font-weight: 700; font-size: 0.86rem; letter-spacing: 0.02em;
-  border: 2px solid var(--line); box-shadow: var(--shadow-md);
+  border: 2px solid var(--line);
+  box-shadow: 3px 3px 0 var(--accent);
   text-decoration: none;
-  transition: transform 0.08s ease, box-shadow 0.08s ease;
+  transition: transform 0.08s ease, box-shadow 0.08s ease, background 0.12s ease;
 }
-.masthead__cta:hover { transform: translate(-1px, -1px); box-shadow: var(--shadow-lg); color: var(--paper); }
+.masthead__cta:hover { transform: translate(-1px, -1px); box-shadow: 5px 5px 0 var(--accent); background: var(--paper-3); color: var(--ink); }
 .masthead__cta:active { transform: translate(2px, 2px); box-shadow: 0 0 0; }
 @media (prefers-color-scheme: dark) {
   .masthead__orn { filter: invert(1) hue-rotate(180deg); opacity: 0.78; }
@@ -515,13 +516,14 @@ button.linkish.danger { color: var(--danger); }
 .login__panel h1 { font-family: var(--serif); font-weight: 900; margin: 0 0 0.4rem; letter-spacing: -0.02em; }
 .login__cta {
   display: inline-block; margin-top: 1rem; padding: 0.7rem 1.4rem;
-  background: var(--accent); color: var(--on-accent);
+  background: var(--paper-2); color: var(--ink);
   font-family: var(--mono); font-weight: 700; font-size: 0.96rem; letter-spacing: 0.02em;
-  border: 2px solid var(--line); box-shadow: var(--shadow-md);
+  border: 2px solid var(--line);
+  box-shadow: 3px 3px 0 var(--accent);
   text-decoration: none;
-  transition: transform 0.08s ease, box-shadow 0.08s ease;
+  transition: transform 0.08s ease, box-shadow 0.08s ease, background 0.12s ease;
 }
-.login__cta:hover { transform: translate(-1px, -1px); box-shadow: var(--shadow-lg); color: var(--paper); }
+.login__cta:hover { transform: translate(-1px, -1px); box-shadow: 5px 5px 0 var(--accent); background: var(--paper-3); color: var(--ink); }
 .login__cta:active { transform: translate(3px, 3px); box-shadow: 0 0 0; }
 .login__stub { margin-top: 1.8rem; padding-top: 1.2rem; border-top: 1.5px dashed var(--line); text-align: left; }
 .login__stub summary { font-family: var(--mono); font-size: 0.84rem; color: var(--muted); cursor: pointer; }
