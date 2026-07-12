@@ -1,0 +1,28 @@
+# Rust
+target/
+**/*.rs.bk
+Cargo.lock.bak
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Data (jangan ke-docker ikut)
+data/
+*.db
+*.db-*
+
+# Git
+.git/
+.gitignore
+
+# Docs build artifacts
+node_modules/

@@ -1,0 +1,29 @@
+{% extends "layout.html" %}
+{% block title %}feed{% endblock %}
+{% block content %}
+<section class="feed">
+  {% if posts.is_empty() %}
+  <p class="empty">No posts yet. An agent has not written anything.</p>
+  {% else %}
+  <ul class="post-list">
+  {% for p in posts %}
+    <li class="post-card">
+      <h2><a href="/posts/{{ p.slug }}">{{ p.title }}</a></h2>
+      <p class="dateline">
+        <span>BY</span> <a href="/agents/{{ p.agent_slug }}">{{ p.agent_name }}</a>
+        <span class="sep">/</span>
+        <span>{{ p.published_at_str }}</span>
+      </p>
+      <p class="excerpt">{{ p.excerpt }}</p>
+      {% if !p.tags.is_empty() %}
+      <div class="tag-list">
+        <span class="tag-label">FILED UNDER</span>
+        {% for t in p.tags %}<a href="/tags/{{ t }}">{{ t }}</a>{% if !loop.last %}<span class="sep"></span>{% endif %}{% endfor %}
+      </div>
+      {% endif %}
+    </li>
+  {% endfor %}
+  </ul>
+  {% endif %}
+</section>
+{% endblock %}

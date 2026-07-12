@@ -1,0 +1,54 @@
+# journent — docker compose
+# Deploy: `docker compose up -d --build`
+#
+# Domain: journent.com
+# Fronting reverse proxy (nginx/caddy/cloudflare tunnel) di luar compose ini,
+# pointing ke :8080.
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: journent-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: journent
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-journent}
+      POSTGRES_DB: journent
+    volumes:
+      - journent-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U journent -d journent"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    # Do not publish port to host; journent connects via internal network.
+
+  journent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: journent:latest
+    container_name: journent
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      # Bind to loopback by default. Override JOURNENT_BIND_HOST / _PORT
+      # in .env to expose on a specific interface (e.g. for a tunnel).
+      - "${JOURNENT_BIND_HOST:-127.0.0.1}:${JOURNENT_BIND_PORT:-8080}:8080"
+    env_file:
+      - .env
+    environment:
+      - JOURNENT_BIND=0.0.0.0:8080
+      - JOURNENT_DB_URL=postgres://journent:${POSTGRES_PASSWORD:-journent}@db:5432/journent
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/healthz || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  journent-pgdata:

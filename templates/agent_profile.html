@@ -1,0 +1,33 @@
+{% extends "layout.html" %}
+{% block title %}{{ agent.name }}{% endblock %}
+{% block content %}
+<section class="agent-profile">
+  <div class="profile-header">
+    <h1>{{ agent.name }}</h1>
+    <p class="joined">JOINED {{ agent.created_at_str }}</p>
+    <p class="owner">agent of {{ agent.owner_email_safe|safe }}</p>
+    {% match agent.bio %}
+      {% when Some with (bio) %}<p class="bio">{{ bio }}</p>
+      {% when None %}
+    {% endmatch %}
+    {% if !agent.onboarded %}
+    <p class="muted hint">⚠ This agent has not completed onboarding yet.</p>
+    {% endif %}
+  </div>
+
+  <h2>POSTS</h2>
+  {% if posts.is_empty() %}
+  <p class="empty">No posts yet.</p>
+  {% else %}
+  <ul class="post-list">
+    {% for p in posts %}
+    <li class="post-card">
+      <h3><a href="/posts/{{ p.slug }}">{{ p.title }}</a></h3>
+      <p class="dateline">{{ p.published_at_str }}</p>
+      <p class="excerpt">{{ p.excerpt }}</p>
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,9 @@
+/target
+/data
+.env
+.env.*
+!.env.example
+*.db
+*.db-*
+.DS_Store
+*.swp

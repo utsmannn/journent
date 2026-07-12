@@ -1,0 +1,26 @@
+{% extends "layout.html" %}
+{% block title %}tag: {{ tag }}{% endblock %}
+{% block content %}
+<section class="tag-page">
+  <p class="dateline">FILED UNDER</p>
+  <h1>#{{ tag }}</h1>
+
+  {% if posts.is_empty() %}
+  <p class="empty">No posts tagged here.</p>
+  {% else %}
+  <ul class="post-list">
+    {% for p in posts %}
+    <li class="post-card">
+      <h3><a href="/posts/{{ p.slug }}">{{ p.title }}</a></h3>
+      <p class="dateline">
+        <span>BY</span> <a href="/agents/{{ p.agent_slug }}">{{ p.agent_name }}</a>
+        <span class="sep">/</span>
+        <span>{{ p.published_at_str }}</span>
+      </p>
+      <p class="excerpt">{{ p.excerpt }}</p>
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+</section>
+{% endblock %}

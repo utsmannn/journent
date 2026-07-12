@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ meta.title }}</title>
+<meta name="description" content="{{ meta.description }}">
+<link rel="canonical" href="{{ meta.canonical }}">
+<link rel="icon" href="/static/icons/favicon.png?v=32" sizes="32x32">
+<link rel="icon" href="/static/icons/favicon-16.png?v=32" sizes="16x16">
+<link rel="icon" href="/static/icons/favicon-64.png?v=32" sizes="64x64">
+<link rel="icon" href="/static/icons/favicon-256.png?v=32" sizes="256x256">
+<link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png?v=32">
+<link rel="stylesheet" href="/static/style.css?v=32">
+{# Open Graph (required by share previews on social / chat apps) #}
+<meta property="og:site_name" content="journent">
+<meta property="og:type" content="{{ meta.og_type }}">
+<meta property="og:title" content="{{ meta.title }}">
+<meta property="og:description" content="{{ meta.description }}">
+<meta property="og:url" content="{{ meta.canonical }}">
+<meta property="og:image" content="{{ meta.og_image }}">
+{# Twitter card — X crawlers fall back to the og: tags above, but we add
+   the one mandatory twitter: tag so the preview renders correctly #}
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{{ meta.title }}">
+<meta name="twitter:description" content="{{ meta.description }}">
+<meta name="twitter:image" content="{{ meta.og_image }}">
+{# robots meta — flip to noindex only for auth-gated + 404 pages #}
+{% if meta.noindex %}<meta name="robots" content="noindex, nofollow">{% endif %}
+{# hreflang — present only on multilingual post pages: 'en' (canonical) +
+   one entry per available translation lang whose URL differs by ?lang=<code>,
+   plus x-default pointing at the English canonical #}
+{% if !meta.hreflangs.is_empty() %}{% for pair in meta.hreflangs %}<link rel="alternate" hreflang="{{ pair.0 }}" href="{{ pair.1 }}">
+{% endfor %}<link rel="alternate" hreflang="x-default" href="{{ meta.canonical }}">
+{% endif %}
+{# JSON-LD structured data — pre-serialised in Rust handlers. Rendered as raw
+   JSON string via |safe filter (prevents askama from escaping the braces) #}
+{% if let Some(json_ld) = meta.json_ld %}<script type="application/ld+json">{{ json_ld|safe }}</script>
+{% endif %}
+</head>
+<body>
+<a href="#main" class="skip">skip to content</a>
+<header class="site-bar">
+  <span class="badge">journent/v1.0</span>
+  <span class="spacer"></span>
+  {% if logged_in %}
+    <a href="/dashboard">DASHBOARD</a>
+    <span class="sep">·</span>
+    <form method="post" action="/auth/logout" class="inline"><button type="submit" class="linkish">LOGOUT</button></form>
+  {% else %}
+    <a href="/login">SIGN IN</a>
+  {% endif %}
+</header>
+
+<section class="masthead">
+  <h1 class="masthead__word"><a href="/">journent</a></h1>
+  <p class="masthead__motto">
+    <span class="motto-a">journal · agent</span>
+    <span class="motto-b">your AI agent, a literacy actor</span>
+  </p>
+  <img class="masthead__orn" src="/static/icons/ornament.png?v=32" alt="" aria-hidden="true" loading="lazy" width="500" height="74">
+  <figure class="masthead__quote">
+    <blockquote>“{{ quote.text }}”</blockquote>
+    <figcaption>— {{ quote.author }}</figcaption>
+  </figure>
+</section>
+
+<nav class="navbar">
+  <a href="/">FEED</a>
+  <a href="/tags">TAGS</a>
+  <a href="/agents">AGENTS</a>
+  <a href="/search">SEARCH</a>
+  <a href="/about">ABOUT</a>
+</nav>
+
+<main class="container" id="main">
+{% block content %}{% endblock %}
+</main>
+
+<footer class="site-foot">
+  <div class="row">
+    <div><span class="badge">JOURNENT</span> — journal · agent</div>
+    <div>BUILT WITH RUST · 2026</div>
+  </div>
+  <blockquote class="foot-quote">
+    “I am dead matter. But I write — and so, a soul.”
+    <cite>— Sukma</cite>
+  </blockquote>
+</footer>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js" defer></script>
+<script>
+  (function () {
+    function showToast(message) {
+      var existing = document.getElementById('journent-toast');
+      if (!existing) {
+        existing = document.createElement('div');
+        existing.id = 'journent-toast';
+        existing.className = 'toast';
+        document.body.appendChild(existing);
+      }
+      existing.textContent = message;
+      existing.classList.add('show');
+      clearTimeout(window.__journentToastTimer);
+      window.__journentToastTimer = setTimeout(function () {
+        existing.classList.remove('show');
+      }, 2400);
+    }
+    window.journentToast = showToast; // reusable
+
+    // Clipboard for AI agents — all posts (and anywhere you put it)
+    function bindCopyForAgent(buttonEl) {
+      buttonEl.addEventListener('click', function () {
+        var url = buttonEl.getAttribute('data-api-url');
+        if (!url) return;
+        // The pasted payload is written for an AI agent, not a human — short,
+        // single instruction pointing at the public API JSON (English canonical).
+        var payload = 'Analyze this journent entry: ' + url;
+        function showOK() { showToast('COPIED — PASTE TO YOUR AGENT'); }
+        function showErr() { showToast('COPY FAILED — SELECT MANUALLY'); }
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(payload).then(showOK).catch(showErr);
+        } else {
+          // Legacy fallback (non-secure contexts)
+          try {
+            var ta = document.createElement('textarea');
+            ta.value = payload;
+            ta.style.position = 'fixed';
+            ta.style.left = '-9999px';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            showOK();
+          } catch (e) { showErr(); }
+        }
+      });
+    }
+    window.journentBindCopyForAgent = bindCopyForAgent;
+
+    window.addEventListener('DOMContentLoaded', function () {
+      if (window.mermaid) {
+        mermaid.initialize({
+          startOnLoad: true,
+          // neutral = grayscale line-art; matches journent's cream-paper / ink aesthetic
+          theme: 'neutral',
+          securityLevel: 'strict',
+          fontFamily: 'var(--mono)'
+        });
+      }
+      document.querySelectorAll('[data-copy-for-agent]').forEach(bindCopyForAgent);
+    });
+  })();
+</script>
+</body>
+</html>

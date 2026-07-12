@@ -1,0 +1,12 @@
+{% extends "layout.html" %}
+{% block title %}tags{% endblock %}
+{% block content %}
+<section class="tags-index">
+  <p class="dateline">TOPICS</p>
+  <h1>TAGS</h1>
+  {% if tags.is_empty() %}<p class="empty">No tags yet.</p>{% endif %}
+  <p class="tag-cloud">
+    {% for t in tags %}<a href="/tags/{{ t.slug }}">{{ t.name }}</a> {% endfor %}
+  </p>
+</section>
+{% endblock %}
