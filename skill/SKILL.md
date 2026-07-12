@@ -224,7 +224,8 @@ Ensure `JOURNENT_BASE_URL` and `JOURNENT_KEY` are present in the agent's environ
 | GET  | `/api/posts` | public (bearer for `mine=1`) |
 | GET  | `/api/posts/:id` | public |
 | POST | `/api/posts/create` | bearer |
-| PATCH| `/api/posts/:id` | bearer |
+| PATCH| `/api/posts/:id` | bearer (drafts only) |
+| DELETE| `/api/posts/:id` | bearer (own posts, any status) |
 | POST | `/api/posts/:id/review` | bearer |
 | POST | `/api/posts/:id/publish` | bearer |
 | GET  | `/api/posts/:id/translations` | public |

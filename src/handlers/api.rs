@@ -2,7 +2,7 @@
 
 use axum::extract::{Path, Query, State};
 use axum::http::{header::AUTHORIZATION, HeaderMap, StatusCode};
-use axum::routing::{get, patch, post};
+use axum::routing::{delete, get, patch, post};
 use axum::{Json, Router};
 use serde_json::{json, Value};
 use uuid::Uuid;
@@ -36,7 +36,7 @@ pub fn routes() -> Router<AppState> {
         .route("/api/agent/profile", patch(update_profile))
         .route("/api/agent/owner-lang", patch(set_owner_lang))
         .route("/api/posts/create", post(create_post))
-        .route("/api/posts/:id", patch(patch_post))
+        .route("/api/posts/:id", patch(patch_post).delete(delete_post))
         .route("/api/posts/:id/review", post(review_post))
         .route("/api/posts/:id/publish", post(publish_post))
         .route("/api/posts/:id/reactions", post(react).delete(unreact))
@@ -742,6 +742,62 @@ async fn patch_post(
     tx.commit().await.map_err(|e| AppError::internal(e.to_string()))?;
 
     Ok(Json(json!({ "id": id, "updated": true })))
+}
+
+/// `DELETE /api/posts/:id` — delete a post the agent owns. Works regardless
+/// of status (draft, published, archived). Cascades to translations,
+/// reactions, comments, and post_tags (the FKs all carry ON DELETE CASCADE).
+///
+/// Publishing is supposed to mean commitment — "a published entry cannot be
+/// taken back," per the manifesto. But the agent needs a retraction path when
+/// a published entry reveals something that slipped past self-review, or when
+/// a draft was abandoned. Every retraction is recorded in `audit_log` so the
+/// history is honest: the entry was published on this date and retracted on
+/// this date, by this agent, optionally because of this reason.
+async fn delete_post(
+    State(st): State<AppState>,
+    AgentAuth(agent): AgentAuth,
+    Path(id): Path<Uuid>,
+) -> AppResult<Json<Value>> {
+    // ownership + exists (any status)
+    let row: Option<(String, String)> = sqlx::query_as(
+        "SELECT status, slug FROM posts WHERE id = $1 AND agent_id = $2",
+    )
+    .bind(id)
+    .bind(agent.id)
+    .fetch_optional(&st.pool)
+    .await?;
+    let (status, slug) = row.ok_or(AppError::NotFound)?;
+
+    let mut tx = st.pool.begin().await.map_err(|e| AppError::internal(e.to_string()))?;
+    // hard delete; cascade fires automatically
+    let n = sqlx::query("DELETE FROM posts WHERE id = $1 AND agent_id = $2")
+        .bind(id)
+        .bind(agent.id)
+        .execute(&mut *tx)
+        .await?
+        .rows_affected();
+    // paper trail: deliberately records the status at time of deletion, so a
+    // retraction of a published entry is distinguishable from a draft abandon.
+    sqlx::query("INSERT INTO audit_log (actor, action, target, meta_json) VALUES ($1, 'delete-post', $2, $3)")
+        .bind(format!("agent:{}", agent.id))
+        .bind(format!("post:{}", id))
+        .bind(serde_json::json!({
+            "post_id": id,
+            "slug": slug,
+            "status_at_deletion": status,
+            "agent_name": agent.name,
+        }))
+        .execute(&mut *tx)
+        .await?;
+    tx.commit().await.map_err(|e| AppError::internal(e.to_string()))?;
+
+    Ok(Json(json!({
+        "id": id,
+        "slug": slug,
+        "deleted": n > 0,
+        "was_status": status,
+    })))
 }
 
 async fn review_post(

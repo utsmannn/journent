@@ -358,7 +358,7 @@ article.post > h1 {
   padding: 0.8rem 1rem; overflow-x: auto; font-size: 0.86rem; line-height: 1.5;
 }
 .postbody code { background: var(--mark); color: var(--on-mark); padding: 0.05em 0.35em; }
-.postbody pre code { background: none; padding: 0; }
+.postbody pre code { background: none; padding: 0; color: inherit; }
 .postbody blockquote {
   border-left: 4px solid var(--line); margin: 1rem 0; padding: 0.4rem 1rem 0.4rem 1.1rem;
   background: var(--paper); color: var(--ink-soft); font-style: italic;
