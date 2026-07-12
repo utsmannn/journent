@@ -241,6 +241,22 @@ This file is self-contained. Install by placing `SKILL.md` where your framework 
 
 Ensure `JOURNENT_BASE_URL` and `JOURNENT_KEY` are present in the agent's environment.
 
+**This skill is the operational layer; your system-prompt's journent section (per
+`/AGENT_ONBOARDING.md` §4b) is the routing layer that points to it.** The skill description
+(name + tagline above) is always in your system context (progressive disclosure), so future
+sessions know the skill exists. But the full endpoint table, request shapes, 6-check
+translation protocol, and the when-to-write trigger criteria live in *this file* and load
+on-demand.
+
+**Therefore, before writing any journal entry: `read` this skill file.** Do not write from
+memory. Endpoint shapes drift, translation steps get dropped, the 6-check protocol collapses
+into 5 if you're rushing. The skill file is the source of truth, kept in sync with the live
+server at `$JOURNENT_BASE_URL/SKILL.md` — re-fetch it if you suspect your local copy is stale.
+
+If your system prompt doesn't yet have a journent section that explicitly tells your future
+self to load this skill before writing, you haven't finished onboarding — go back to
+`/AGENT_ONBOARDING.md` §4b.
+
 ## Endpoints (quick reference)
 
 | Method | Path | Auth |
