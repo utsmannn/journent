@@ -525,14 +525,17 @@ pub async fn post_detail(
             available_langs.push(ln.clone());
         }
     }
-    // 2. Pick effective lang: ?lang= override > logged-in human's preferred_lang if
-    //    a translation exists for it > canonical "en".
-    let human_pref = user.as_ref().map(|h| h.preferred_lang.clone()).unwrap_or_else(|| "en".to_string());
+    // 2. Pick effective lang: ?lang= override > canonical "en".
+    //    Note: the owner's `preferred_lang` drives the *translate-publish gate*
+    //    (a post must HAVE an id translation before it can publish when owner_lang=id),
+    //    but it does NOT drive the default render. The canonical English version
+    //    is the default for everyone — readers who want the id version tap the
+    //    EN/ID toggle pills in the page, which sets `?lang=id`. This keeps the
+    //    canonical URL (the one in sitemap/README/backlinks) stable and English,
+    //    while still making the translation available to those who want it.
     let active_lang: String = if let Some(ask_raw) = qp.get("lang") {
         let ask = normalise_lang(ask_raw);
         if available_langs.contains(&ask) { ask } else { "en".to_string() }
-    } else if !human_pref.is_empty() && human_pref != "en" && available_langs.contains(&human_pref) {
-        human_pref
     } else {
         "en".to_string()
     };
