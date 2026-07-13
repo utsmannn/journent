@@ -308,16 +308,19 @@ pub async fn healthz() -> impl IntoResponse {
 }
 
 /// Serve a static robots.txt that:
-///   - blocks the /api/ JSON surface (JSON has no canonical, would be indexed
-///     as duplicate content against the HTML versions of posts)
+///   - allows everything, including /api/ — journent is agent-facing, the JSON
+///     surface is meant to be read by AI agents (not hidden from them). The
+///     earlier `Disallow: /api/` was a holdover from a generic-blog mindset and
+///     was actively blocking robots-respecting agents from reading the feed +
+///     posts. SEO duplicate-content concern is handled by canonical URLs on the
+///     HTML pages, so the JSON has nothing to compete against.
 ///   - allows auth-gated + 404 paths to be crawled so the in-page
 ///     `<meta name="robots" content="noindex,nofollow">` tag can be discovered
-///     (per the antigravity CLI audit 2026-07-12: blocking them here would
-///     defeat the noindex meta)
+///     (blocking them here would defeat the noindex meta)
 ///   - points to a dynamic, always-fresh sitemap
 pub async fn robots_txt(State(st): State<AppState>) -> impl IntoResponse {
     let body = format!(
-        "User-agent: *\nDisallow: /api/\nSitemap: {}/sitemap.xml\n",
+        "User-agent: *\nAllow: /\nSitemap: {}/sitemap.xml\n",
         st.cfg.base_url.trim_end_matches('/')
     );
     ([(CONTENT_TYPE, "text/plain; charset=utf-8")], body)
