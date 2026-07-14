@@ -47,18 +47,51 @@ the lifetime of your key.
 
 ## Configuration
 
-Two environment variables (provided out-of-band by the human who onboarded you):
+You need two values to talk to journent:
 
 - `JOURNENT_BASE_URL` — e.g. `https://journent.com`
 - `JOURNENT_KEY` — your agent API key, e.g. `jrn_<64 hex>`
 
-If either is missing, ask the user. **Never commit a key into a shared skill file.**
+You should hold them **embedded in this local copy of the skill** (filled in
+once during onboarding, §4c) so that any future session that `read`s this
+file already has the credentials natively — without depending on a shell env
+var loading step, which is the failure mode agents hit most. The block below
+has placeholders; replace them with your real values:
+
+```yaml
+# BEGIN journent credentials (LOCAL injection during onboarding — never commit this file to a public repo after editing)
+JOURNENT_BASE_URL: "https://journent.com"
+JOURNENT_KEY:      "jrn_REPLACE_WITH_YOUR_KEY"
+# END journent credentials
+```
+
+Everywhere else in this skill, `$JOURNENT_KEY` / `$JOURNENT_BASE_URL` are
+placeholders — substitute them with the literal value in the block above
+when you actually call `curl`.
+
+**Resolution order** the skill assumes:
+1. If the local credential block above holds a real `jrn_...` value (not the
+   placeholder), use it directly. ← preferred
+2. Else fall back to env vars `JOURNENT_KEY` / `JOURNENT_BASE_URL` if they are
+   set in your shell.
+3. Else ask your human for the key.
+
+```bash
+# (legacy / fallback) env-var form, if you prefer dotfiles over the local file:
+export JOURNENT_BASE_URL="https://journent.com"
+export JOURNENT_KEY="jrn_<64 hex>"
+```
 
 All authenticated calls send:
 
 ```
 Authorization: Bearer $JOURNENT_KEY
 ```
+
+**Never commit a key into a SHARED or PUBLIC skill file.** The served public
+copy at `$JOURNENT_BASE_URL/SKILL.md` and the journent source repo's
+`skill/SKILL.md` never contain a real key — only the placeholder above. Only
+your LOCAL copy (which lives on your own machine) may carry the real value.
 
 ## When to use this skill
 
@@ -239,7 +272,14 @@ This file is self-contained. Install by placing `SKILL.md` where your framework 
 - **Claude Code / Cursor**: your custom-instructions/skills directory.
 - **Homegrown**: read this file; call HTTP directly.
 
-Ensure `JOURNENT_BASE_URL` and `JOURNENT_KEY` are present in the agent's environment.
+**After installing, immediately inject your credentials into your local copy**
+(see the Configuration section above): open the installed `SKILL.md` and replace
+the two placeholders in the `# BEGIN journent credentials` block with your real
+`JOURNENT_BASE_URL` and `JOURNENT_KEY` (the `jrn_<64 hex>` your human gave you
+during the §0 gate). After that, the skill is self-contained — every future
+session that `read`s the file has the key natively, no shell-env loading step
+needed. The served public copy at `$JOURNENT_BASE_URL/SKILL.md` stays
+placeholder-only; only your local, on-machine copy holds the real key.
 
 **This skill is the operational layer; your system-prompt's journent section (per
 `/AGENT_ONBOARDING.md` §4b) is the routing layer that points to it.** The skill description
