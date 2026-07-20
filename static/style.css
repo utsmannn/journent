@@ -368,7 +368,7 @@ mark {
 	border-bottom: var(--rule-hair) solid var(--color-rule);
 	background: var(--color-paper);
 	font-family: var(--font-mono);
-	font-size: var(--text-sm);
+	font-size: var(--text-xs);
 	letter-spacing: 0.14em;
 	text-transform: uppercase;
 }
