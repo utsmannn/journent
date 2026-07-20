@@ -45,6 +45,13 @@ struct AgentRow {
     onboarded: bool,
 }
 
+struct EventRow {
+    at_str: String,
+    actor: String,
+    action: String,
+    target: String,
+}
+
 struct ReactionView {
     emoji: String,
     count: i32,
@@ -109,6 +116,7 @@ pub struct DashboardTemplate {
     pub agents: Vec<AgentRow>,
     pub csrf_value: String,
     pub archived: Vec<ArchView>,
+    pub events: Vec<EventRow>,
     pub quote: crate::quotes::Quote,
 }
 
@@ -955,7 +963,7 @@ pub async fn search_page(
     // Merge dedupe-by-post-id, prefer higher-scoring version.
     let mut merged: Vec<(Uuid, String, String, String, String, Option<chrono::DateTime<chrono::Utc>>, Vec<String>, f32, String)> = Vec::new();
     let mut best_by_id: std::collections::HashMap<Uuid, (f32, usize)> = std::collections::HashMap::new();
-    for row in en_rows.into_iter().chain(tr_rows.into_iter()) {
+    for row in en_rows.into_iter().chain(tr_rows) {
         let id = row.0;
         let score = row.7;
         match best_by_id.get(&id) {
@@ -1066,6 +1074,10 @@ pub async fn dashboard(
     .bind(human.id)
     .fetch_all(&st.pool)
     .await?;
+    let agent_names: std::collections::HashMap<String, String> = agent_rows
+        .iter()
+        .map(|(id, name, ..)| (id.to_string(), name.clone()))
+        .collect();
     let agents = agent_rows
         .into_iter()
         .map(|(id, name, slug, display_prefix, onboarded)| AgentRow {
@@ -1095,6 +1107,36 @@ pub async fn dashboard(
         })
         .collect();
 
+    // audit trail: this human's own actions + its agents' actions + server errors
+    let human_actor = format!("human:{}", human.id);
+    let event_rows: Vec<(String, String, String, chrono::DateTime<chrono::Utc>)> = sqlx::query_as(
+        "SELECT actor, action, COALESCE(target, ''), created_at FROM audit_log
+         WHERE actor = $1
+            OR actor IN (SELECT 'agent:' || id::text FROM agents WHERE human_id = $2)
+            OR actor = 'system'
+         ORDER BY created_at DESC LIMIT 50",
+    )
+    .bind(&human_actor)
+    .bind(human.id)
+    .fetch_all(&st.pool)
+    .await?;
+    let events = event_rows
+        .into_iter()
+        .map(|(actor, action, target, at)| {
+            let actor_disp = if actor == human_actor {
+                "you".to_string()
+            } else if let Some(aid) = actor.strip_prefix("agent:") {
+                agent_names
+                    .get(aid)
+                    .cloned()
+                    .unwrap_or_else(|| format!("agent:{}", &aid[..aid.len().min(8)]))
+            } else {
+                "server".to_string()
+            };
+            EventRow { at_str: fmt_dt(at), actor: actor_disp, action, target }
+        })
+        .collect();
+
     // one-time reveal cookie → instruction box
     let instruction = read_reveal(&headers)
         .map(|key| onboarding::instruction_text(&st.cfg.base_url, &key));
@@ -1114,6 +1156,7 @@ pub async fn dashboard(
         agents,
         csrf_value: csrf.clone().unwrap_or_default(),
         archived,
+        events,
         quote: crate::quotes::random_quote(),
     };
     let body = t.render().map_err(|e| AppError::internal(e.to_string()))?;

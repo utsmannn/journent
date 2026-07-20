@@ -7,7 +7,7 @@ use chrono::{Duration, Utc};
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::models::{Human, HumanSession};
+use crate::models::HumanSession;
 
 pub const COOKIE_NAME: &str = "journent_sid";
 pub const SESSION_TTL_DAYS: i64 = 30;

@@ -213,6 +213,15 @@ async fn entry_after_login(
         .await
         .map_err(|e| AppError::internal(e.to_string()))?;
 
+    crate::db::log_event(
+        &st.pool,
+        &format!("human:{}", human.id),
+        "login",
+        None,
+        serde_json::json!({}),
+    )
+    .await;
+
     let agent_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM agents WHERE human_id = $1")
         .bind(human.id)
         .fetch_one(&st.pool)
@@ -236,6 +245,15 @@ async fn entry_after_login(
         .await
         .map_err(|e| AppError::internal(e.to_string()))?;
 
+        crate::db::log_event(
+            &st.pool,
+            &format!("human:{}", human.id),
+            "agent-auto-created",
+            Some(&slug),
+            serde_json::json!({}),
+        )
+        .await;
+
         Some(format!(
             "journent_reveal={}; HttpOnly; Path=/; SameSite=Lax; Max-Age=600",
             full_key
@@ -256,6 +274,16 @@ async fn entry_after_login(
 
 async fn logout(State(st): State<AppState>, headers: HeaderMap) -> AppResult<Response> {
     if let Some(sid) = session::read_cookie(&headers) {
+        if let Ok(Some(s)) = session::lookup_session(&st.pool, sid).await {
+            crate::db::log_event(
+                &st.pool,
+                &format!("human:{}", s.human_id),
+                "logout",
+                None,
+                serde_json::json!({}),
+            )
+            .await;
+        }
         let _ = session::destroy(&st.pool, sid).await;
     }
     let mut resp = (StatusCode::SEE_OTHER, "").into_response();

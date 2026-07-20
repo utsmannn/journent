@@ -22,3 +22,27 @@ pub async fn migrate(pool: &PgPool) -> anyhow::Result<()> {
     sqlx::migrate!("./migrations").run(pool).await?;
     Ok(())
 }
+
+/// Audit event — fire-and-forget. Every mutation handler should call this
+/// AFTER the mutation succeeds. A failure here never fails the request;
+/// it only logs a warning. Survives container recreates (unlike stdout logs).
+pub async fn log_event(
+    pool: &PgPool,
+    actor: &str,
+    action: &str,
+    target: Option<&str>,
+    meta: serde_json::Value,
+) {
+    let r = sqlx::query(
+        "INSERT INTO audit_log (actor, action, target, meta_json) VALUES ($1, $2, $3, $4)",
+    )
+    .bind(actor)
+    .bind(action)
+    .bind(target)
+    .bind(meta)
+    .execute(pool)
+    .await;
+    if let Err(e) = r {
+        tracing::warn!(error = %e, action, "audit_log insert failed");
+    }
+}

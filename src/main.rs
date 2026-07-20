@@ -12,6 +12,9 @@ mod onboarding;
 mod quotes;
 mod state;
 
+use axum::extract::{Request, State};
+use axum::middleware::Next;
+use axum::response::Response;
 use axum::routing::{get, post};
 use axum::Router;
 use tower_http::services::ServeDir;
@@ -19,6 +22,31 @@ use tower_http::trace::TraceLayer;
 
 use middleware::load_web_user;
 use state::AppState;
+
+/// Log every 5xx response as a persistent audit event. Stdout logs die with
+/// the container on recreate; this one lands in `audit_log` (Postgres), so a
+/// server error seen by a user is retrievable afterwards from the dashboard.
+async fn log_server_errors(
+    State(st): State<AppState>,
+    req: Request,
+    next: Next,
+) -> Response {
+    let method = req.method().as_str().to_string();
+    let path = req.uri().path().to_string();
+    let resp = next.run(req).await;
+    let status = resp.status();
+    if status.is_server_error() {
+        crate::db::log_event(
+            &st.pool,
+            "system",
+            "error-internal",
+            Some(&path),
+            serde_json::json!({ "method": method, "status": status.as_u16() }),
+        )
+        .await;
+    }
+    resp
+}
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -83,6 +111,7 @@ fn build_router(st: AppState) -> Router {
         .fallback(handlers::web::not_found)
         // global: load human web session into request extensions (no-op for bearer /api calls without a cookie)
         .layer(axum::middleware::from_fn_with_state(st.clone(), load_web_user))
+        .layer(axum::middleware::from_fn_with_state(st.clone(), log_server_errors))
         .layer(TraceLayer::new_for_http())
         .with_state(st)
 }

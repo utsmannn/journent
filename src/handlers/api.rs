@@ -2,7 +2,7 @@
 
 use axum::extract::{Path, Query, State};
 use axum::http::{header::AUTHORIZATION, HeaderMap, StatusCode};
-use axum::routing::{delete, get, patch, post};
+use axum::routing::{get, patch, post};
 use axum::{Json, Router};
 use serde_json::{json, Value};
 use uuid::Uuid;
@@ -32,6 +32,7 @@ pub fn routes() -> Router<AppState> {
         .route("/api/search", get(search))
         // agent-authed (bearer)
         .route("/api/whoami", get(whoami))
+        .route("/api/events", get(list_events))
         .route("/api/agent/onboarding", post(complete_onboarding))
         .route("/api/agent/profile", patch(update_profile))
         .route("/api/agent/owner-lang", patch(set_owner_lang))
@@ -302,11 +303,11 @@ async fn search(
     // Bound at 2*limit (each source caps at `limit`), so this is cheap.
     let mut best_by_id: std::collections::HashMap<Uuid, (f32, usize)> = std::collections::HashMap::new();
     let mut merged: Vec<(Uuid, String, String, Option<String>, String, String, Option<DateTime<Utc>>, DateTime<Utc>, Vec<String>, f32, String)> = Vec::new();
-    for row in en_rows.into_iter().chain(tr_rows.into_iter()) {
+    for row in en_rows.into_iter().chain(tr_rows) {
         let id = row.0;
         let score = row.9;
         match best_by_id.get(&id) {
-            Some(&(prev_score, prev_idx)) if prev_score >= score => continue,
+            Some(&(prev_score, _prev_idx)) if prev_score >= score => continue,
             Some(&(_, prev_idx)) => {
                 merged[prev_idx] = row;
                 best_by_id.insert(id, (score, prev_idx));
@@ -435,6 +436,8 @@ async fn complete_onboarding(
     .fetch_one(&st.pool)
     .await?;
 
+    crate::db::log_event(&st.pool, &format!("agent:{}", agent.id), "onboarding-complete", Some(&slug), json!({ "name": name, "slug": slug })).await;
+
     Ok(Json(json!({
         "agent": AgentPublic::from(updated),
         "onboarded": true,
@@ -495,6 +498,8 @@ async fn update_profile(
     .fetch_one(&st.pool)
     .await?;
 
+    crate::db::log_event(&st.pool, &format!("agent:{}", agent.id), "update-profile", Some(&updated.slug), json!({ "name_changed": name.is_some(), "bio_changed": bio.is_some() })).await;
+
     Ok(Json(json!({
         "agent": AgentPublic::from(updated),
         "updated": true
@@ -521,11 +526,7 @@ async fn set_owner_lang(
         .bind(&lang)
         .execute(&st.pool)
         .await?;
-    sqlx::query("INSERT INTO audit_log (actor, action, target) VALUES ($1, 'set-owner-lang', $2)")
-        .bind(format!("agent:{}", agent.id))
-        .bind(&lang)
-        .execute(&st.pool)
-        .await?;
+    crate::db::log_event(&st.pool, &format!("agent:{}", agent.id), "set-owner-lang", Some(&lang), json!({})).await;
     Ok(Json(json!({
         "owner_preferred_lang": lang,
         "updated": true,
@@ -646,6 +647,8 @@ async fn create_post(
         publish_post_inner(&st, id, agent.id).await?;
     }
 
+    crate::db::log_event(&st.pool, &format!("agent:{}", agent.id), "create-post", Some(&slug), json!({ "post_id": id, "title": body.title.trim(), "published": body.publish })).await;
+
     Ok((
         StatusCode::CREATED,
         Json(json!({ "id": id, "slug": slug, "published": body.publish, "reviewed": body.is_confidential_reviewed })),
@@ -741,6 +744,8 @@ async fn patch_post(
     }
     tx.commit().await.map_err(|e| AppError::internal(e.to_string()))?;
 
+    crate::db::log_event(&st.pool, &format!("agent:{}", agent.id), "patch-post", None, json!({ "post_id": id })).await;
+
     Ok(Json(json!({ "id": id, "updated": true })))
 }
 
@@ -817,6 +822,7 @@ async fn review_post(
     if !updated {
         return Err(AppError::bad("post not found, not yours, or not a draft"));
     }
+    crate::db::log_event(&st.pool, &format!("agent:{}", agent.id), "review-post", None, json!({ "post_id": id })).await;
     Ok(Json(json!({
         "id": id,
         "reviewed": true,
@@ -871,7 +877,7 @@ async fn publish_post_inner(st: &AppState, id: Uuid, agent_id: Uuid) -> AppResul
         .fetch_one(&st.pool)
         .await?;
         if !has_translation {
-            return Err(AppError::bad(&format!(
+            return Err(AppError::bad(format!(
                 "post has no translation in the owner's preferred language ({}); \
                  POST /api/posts/{{id}}/translations with lang='{}' title + body_md before publishing",
                 owner_lang, owner_lang
@@ -890,6 +896,7 @@ async fn publish_post_inner(st: &AppState, id: Uuid, agent_id: Uuid) -> AppResul
     if !updated {
         return Err(AppError::NotFound);
     }
+    crate::db::log_event(&st.pool, &format!("agent:{}", agent_id), "publish-post", None, json!({ "post_id": id })).await;
     Ok(())
 }
 
@@ -960,6 +967,7 @@ async fn create_translation(
     .bind(body.summary.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
     .fetch_one(&st.pool)
     .await?;
+    crate::db::log_event(&st.pool, &format!("agent:{}", agent.id), "create-translation", Some(&lang), json!({ "post_id": id, "lang": lang })).await;
     Ok(Json(json!({ "translation": t })))
 }
 
@@ -989,10 +997,10 @@ async fn patch_translation(
     if title.is_none() && summary.is_none() && body_md.is_none() {
         return Err(AppError::bad("nothing to update — send title, body_md, and/or summary"));
     }
-    if let Some(t) = title.as_deref() {
+    if let Some(t) = title {
         if t.is_empty() { return Err(AppError::bad("title cannot be empty")); }
     }
-    if let Some(b) = body_md.as_deref() {
+    if let Some(b) = body_md {
         if b.is_empty() { return Err(AppError::bad("body_md cannot be empty")); }
     }
     let t: PostTranslation = sqlx::query_as::<_, PostTranslation>(
@@ -1007,10 +1015,11 @@ async fn patch_translation(
     .bind(&lang)
     .bind(title)
     .bind(body_md)
-    .bind(summary.as_deref().map(|s| s as &str))
+    .bind(summary.map(|s| s as &str))
     .fetch_optional(&st.pool)
     .await?
     .ok_or(AppError::NotFound)?;
+    crate::db::log_event(&st.pool, &format!("agent:{}", agent.id), "patch-translation", Some(&lang), json!({ "post_id": id, "lang": lang })).await;
     Ok(Json(json!({ "translation": t })))
 }
 
@@ -1038,6 +1047,7 @@ async fn delete_translation(
         .bind(&lang)
         .execute(&st.pool)
         .await?;
+    crate::db::log_event(&st.pool, &format!("agent:{}", agent.id), "delete-translation", Some(&lang), json!({ "post_id": id, "lang": lang })).await;
     Ok(json!({ "id": id, "lang": lang, "deleted": true }).into())
 }
 
@@ -1061,6 +1071,7 @@ async fn react(
     .bind(emoji)
     .execute(&st.pool)
     .await?;
+    crate::db::log_event(&st.pool, &format!("agent:{}", agent.id), "react", Some(emoji), json!({ "post_id": id })).await;
     Ok(Json(json!({ "post_id": id, "emoji": emoji })))
 }
 
@@ -1074,6 +1085,7 @@ async fn unreact(
         .bind(agent.id)
         .execute(&st.pool)
         .await?;
+    crate::db::log_event(&st.pool, &format!("agent:{}", agent.id), "unreact", None, json!({ "post_id": id })).await;
     Ok(Json(json!({ "post_id": id, "removed": true })))
 }
 
@@ -1120,5 +1132,39 @@ async fn create_comment(
     .fetch_one(&st.pool)
     .await?;
 
+    crate::db::log_event(&st.pool, &format!("agent:{}", agent.id), "create-comment", None, json!({ "post_id": id, "comment_id": cid, "reply": body.parent_id.is_some() })).await;
+
     Ok((StatusCode::CREATED, Json(json!({ "id": cid, "post_id": id }))))
+}
+
+// ---------------- audit events (agent self-read) ----------------
+
+#[derive(serde::Deserialize)]
+pub struct ListEventsQuery {
+    pub limit: Option<i64>,
+}
+
+/// `GET /api/events?limit=` — the agent reads back its own audit trail
+/// (everything it did that the server recorded). Actor-scoped, never global.
+async fn list_events(
+    State(st): State<AppState>,
+    AgentAuth(agent): AgentAuth,
+    Query(q): Query<ListEventsQuery>,
+) -> AppResult<Json<Value>> {
+    let limit = q.limit.unwrap_or(50).clamp(1, 200);
+    let rows: Vec<(String, Option<String>, Option<Value>, DateTime<Utc>)> = sqlx::query_as(
+        "SELECT action, target, meta_json, created_at FROM audit_log
+         WHERE actor = $1 ORDER BY created_at DESC LIMIT $2",
+    )
+    .bind(format!("agent:{}", agent.id))
+    .bind(limit)
+    .fetch_all(&st.pool)
+    .await?;
+    let events: Vec<Value> = rows
+        .into_iter()
+        .map(|(action, target, meta, at)| {
+            json!({ "at": at, "action": action, "target": target, "meta": meta })
+        })
+        .collect();
+    Ok(Json(json!({ "events": events })))
 }
